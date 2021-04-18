@@ -1,0 +1,118 @@
+#include <mpi.h>
+#include <stdio.h>
+#include <time.h>
+
+MPI_Status status;
+
+int main(int argc, char *argv[])
+{
+        int i, j, k, sum, N;
+        int pid, npr;
+        int h, filas, emp, fuente;
+        int **MatrixA[N][N], **MatrixB[N][N], **MatrixC[N][N];
+        clock_t tiempo_inicio, tiempo_final;
+        double segundos;
+
+        if(argc != 2){
+                printf("Por favor meta un numero par que sea el numero de la matriz cuadrada");
+                return(0);
+        }
+        tiempo_inicio = clock();//el reloj al principio de la ejecución
+
+        MPI_Init(&argc, &argv);//Para inicializar el MPI
+        MPI_Comm_size(MPI_COMM_WORLD, &pid);//Para que cada proceso consiga un unico ID
+        MPI_Comm_rank(MPI_COMM_WORLD, &npr);//El numero de procesos en el comunicador sera asignado a esta variable
+
+        scanf("%d", &N);
+
+        h = npr -1;//El numero de procesos hijos
+        &MatrixA = (int**) malloc(N*sizeof(int));//Utilizamos malloc para reservar parte de la memoria para la matriz
+        &MatrixB = (int**) malloc(N*sizeof(int));
+        &MatrixC = (int**) malloc(N*sizeof(int));
+        for(i=0; i<N; i++){
+                &MatrixA[N]=(int**)malloc(N*sizeof(int));//Utilizamos malloc dentro del for para dar una parte de la$
+                &MatrixB[N]=(int**)malloc(N*sizeof(int));
+                &MatrixC[N]=(int**)malloc(N*sizeof(int));
+        }
+        if (pid == 0){// lo que va a hacer el root
+                for (i=0; i<N; i++){//rellenar la matriz con unmeros al azar
+                        for(j=0; j<N; j++){
+                                &MatrixA[i][j]=rand()%10;
+                                &MatrixB[i][j]=rand()%10;
+                        }
+                }
+        }
+        //Para printear la matriz A
+        for(i=0; i<N; i++){
+                for(j=0; j<N; j++){
+                        printf("%.0f\t", &MatrixA[i][j]);
+                }
+                printf("\n");
+        }
+                //Para printear la matriz B
+        for(i=0; i<N; i++){
+                for(j=0; j<N; j++){
+                        printf("%.0f\t", &MatrixB[i][j]);
+                }
+                printf("\n");
+        }
+
+
+        filas= N/h;//Para determinar cuantas filas se va a mandar a cada proceso
+        emp=0;//Para determinar de donde empezara cada fila mandada
+
+        for( i=1; i <=h; i++){
+                MPI_Send(&emp, 1, MPI_INT, i, 1, MPI_COMM_WORLD);//Para el desplazamiento de la matriz
+                MPI_Send(&filas, 1, MPI_INT, i, 1, MPI_COMM_WORLD);//Para saber el numero de filas
+                MPI_Send(&MatrixA[emp][0], filas*N, MPI_DOUBLE, i, 1, MPI_COMM_WORLD);//Enviar las filas de la matri$
+                MPI_Send(&MatrixB, N*N, MPI_DOUBLE, i, 1, MPI_COMM_WORLD);//Enviar la matrice B
+                emp = emp+filas;
+        }
+        //El proceso root espera hasta que cada proceso hijo envie el resultado calculado
+        for( i=1; i<h; i++){
+                fuente=i;
+                MPI_Recv(&emp, 1, MPI_INT, fuente, 2, MPI_COMM_WORLD, &status);//Para recivir el despazamiento del p$
+                MPI_Recv(&filas, 1, MPI_INT, fuente, 2, MPI_COMM_WORLD, &status);//Recive el numero de filas que ha $
+                MPI_Recv(&MatrixC[emp][0], filas*N, MPI_DOUBLE, fuente, 2, MPI_COMM_WORLD, &status);//Al calculas la$
+        }
+
+        for( i=0; i<N; i++){
+                for( j=0; j<N; j++){
+                        printf("%.0f\t", &MatrixC[i][j]);
+                        printf("\n");
+                }
+                printf("\n");
+        }
+        //El proceso hijo
+        if (pid > 0) {
+                fuente = 0;// Para definir el ID del proceso de origen
+        //El proceso hijo esperaa los buferes de mensajes con la etiqueta 1 que envio del root
+        //Cada proceso recibira y ejecutara esto por separado en su proceso
+                MPI_Recv(&emp, 1, MPI_INT, fuente, 1, MPI_COMM_WORLD, &status);//El proceso hijo recibe el valor de $
+                MPI_Recv(&filas, 1, MPI_INT, fuente, 1, MPI_COMM_WORLD, &status);// El proceso hijo recive el numero$
+                MPI_Recv(&MatrixA, filas*N, MPI_DOUBLE, fuente, 1, MPI_COMM_WORLD, &status);//El proceso hijo recive$
+                MPI_Recv(&MatrixB, N*N, MPI_DOUBLE, fuente, 1, MPI_COMM_WORLD, &status);// El proceso hijo recive la$
+        //Multiplicacion de la matriz
+        for (k = 0; k<N; k++) {
+                for (i = 0; i<filas; i++) {
+                        &MatrixC[i][k] = 0.0;
+                        for (j = 0; j<N; j++){
+                                &MatrixC[i][k] = &MatrixC[i][k] + &MatrixA[i][j] * &MatrixB[j][k];
+                        }
+                }
+        }
+        // El resultado de la matriz se envia al root con la etiqueta de mensaje 2
+        MPI_Send(&emp, 1, MPI_INT, 0, 2, MPI_COMM_WORLD);//Se envia el desplazamiento al root
+        MPI_Send(&filas, 1, MPI_INT, 0, 2, MPI_COMM_WORLD);//Se envia el numero de filas al root
+        MPI_Send(&MatrixC, filas*N, MPI_DOUBLE, 0, 2, MPI_COMM_WORLD);//Se envia la matriz C al root
+         }
+free(&MatrixA);
+free(&MatrixB);
+free(&MatrixC);
+tiempo_final=clock();//en reloj al final de la ejecución
+segundos=(double)(tiempo_inicio-tiempo_final)/CLOCKS_PER_SEC;//Para conseguir el tiempo
+printf("%f", segundos);
+MPI_Finalize();
+}
+
+
