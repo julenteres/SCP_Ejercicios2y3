@@ -30,7 +30,8 @@ int main(int argc, char *argv[])
         &MatrixB = (int**) malloc(N*sizeof(int));
         &MatrixC = (int**) malloc(N*sizeof(int));
         for(i=0; i<N; i++){
-                &MatrixA[N]=(int**)malloc(N*sizeof(int));//Utilizamos malloc dentro del for para dar una parte de la$
+                &MatrixA[N]=(int**)malloc(N*sizeof(int));//Utilizamos malloc dentro del for para dar una parte de la memoria a cada numero de la fila
+
                 &MatrixB[N]=(int**)malloc(N*sizeof(int));
                 &MatrixC[N]=(int**)malloc(N*sizeof(int));
         }
@@ -64,16 +65,18 @@ int main(int argc, char *argv[])
         for( i=1; i <=h; i++){
                 MPI_Send(&emp, 1, MPI_INT, i, 1, MPI_COMM_WORLD);//Para el desplazamiento de la matriz
                 MPI_Send(&filas, 1, MPI_INT, i, 1, MPI_COMM_WORLD);//Para saber el numero de filas
-                MPI_Send(&MatrixA[emp][0], filas*N, MPI_DOUBLE, i, 1, MPI_COMM_WORLD);//Enviar las filas de la matri$
+                MPI_Send(&MatrixA[emp][0], filas*N, MPI_DOUBLE, i, 1, MPI_COMM_WORLD);//Enviar las filas de la matriz que se asignan a los procesos
+
                 MPI_Send(&MatrixB, N*N, MPI_DOUBLE, i, 1, MPI_COMM_WORLD);//Enviar la matrice B
                 emp = emp+filas;
         }
         //El proceso root espera hasta que cada proceso hijo envie el resultado calculado
         for( i=1; i<h; i++){
                 fuente=i;
-                MPI_Recv(&emp, 1, MPI_INT, fuente, 2, MPI_COMM_WORLD, &status);//Para recivir el despazamiento del p$
-                MPI_Recv(&filas, 1, MPI_INT, fuente, 2, MPI_COMM_WORLD, &status);//Recive el numero de filas que ha $
-                MPI_Recv(&MatrixC[emp][0], filas*N, MPI_DOUBLE, fuente, 2, MPI_COMM_WORLD, &status);//Al calculas la$
+                MPI_Recv(&emp, 1, MPI_INT, fuente, 2, MPI_COMM_WORLD, &status);//Para recivir el despazamiento del proceso hijo
+
+                MPI_Recv(&filas, 1, MPI_INT, fuente, 2, MPI_COMM_WORLD, &status);//Recive el numero de filas que ha procesado cada proceso hijo
+                MPI_Recv(&MatrixC[emp][0], filas*N, MPI_DOUBLE, fuente, 2, MPI_COMM_WORLD, &status);//Al calculas las filas de cada proceso se almacenan en la matriz C con el desplazamiento
         }
 
         for( i=0; i<N; i++){
@@ -88,10 +91,10 @@ int main(int argc, char *argv[])
                 fuente = 0;// Para definir el ID del proceso de origen
         //El proceso hijo esperaa los buferes de mensajes con la etiqueta 1 que envio del root
         //Cada proceso recibira y ejecutara esto por separado en su proceso
-                MPI_Recv(&emp, 1, MPI_INT, fuente, 1, MPI_COMM_WORLD, &status);//El proceso hijo recibe el valor de $
-                MPI_Recv(&filas, 1, MPI_INT, fuente, 1, MPI_COMM_WORLD, &status);// El proceso hijo recive el numero$
-                MPI_Recv(&MatrixA, filas*N, MPI_DOUBLE, fuente, 1, MPI_COMM_WORLD, &status);//El proceso hijo recive$
-                MPI_Recv(&MatrixB, N*N, MPI_DOUBLE, fuente, 1, MPI_COMM_WORLD, &status);// El proceso hijo recive la$
+                MPI_Recv(&emp, 1, MPI_INT, fuente, 1, MPI_COMM_WORLD, &status);//El proceso hijo recibe el valor de desplazamiento
+                MPI_Recv(&filas, 1, MPI_INT, fuente, 1, MPI_COMM_WORLD, &status);// El proceso hijo recive el numero de filas enviadas por el root
+                MPI_Recv(&MatrixA, filas*N, MPI_DOUBLE, fuente, 1, MPI_COMM_WORLD, &status);//El proceso hijo recive  la parte de la matriz A que le da el root
+                MPI_Recv(&MatrixB, N*N, MPI_DOUBLE, fuente, 1, MPI_COMM_WORLD, &status);// El proceso hijo recive la matriz B
         //Multiplicacion de la matriz
         for (k = 0; k<N; k++) {
                 for (i = 0; i<filas; i++) {
